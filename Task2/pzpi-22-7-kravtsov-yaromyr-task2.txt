@@ -1,0 +1,454 @@
+﻿Міністерство освіти і науки України 
+Харківський національний університет радіоелектроніки 
+Кафедра програмної інженерії 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Звіт з лабораторної роботи № 2
+ з дисципліни «Аналіз та рефакторинг коду»
+
+
+
+
+
+
+
+
+
+
+Перевірила                                                                     Виконав 
+асистент кафедри ПІ                                               ст. групи ПЗПІ-22-7 
+Данієль Я. Д                                                           Кравцов Я.П.
+                                 
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Харків 2024
+1 Вступ
+1.1 Тема
+
+
+Розробка бази даних для бекенд-системи та створення прикладного програмного інтерфейсу (API).
+
+
+1.2 Мета роботи 
+
+
+Створити базу даних для бекенд-системи та прикладного програмного інтерфейсу (API).
+
+
+
+
+2 Розробка діаграм
+
+
+2.1 Розробка UML діаграми прецедентів для серверної частини системи
+
+
+Для акторів UML-діаграми було обрано користувача (Користувач), адміністратора будівлі (Адмін будівлі) та адміністратора системи (Адмін системи).
+Прецеденти для акторів включають:
+Адмін будівлі:
+* Контроль доступу користувача до зон.
+* Вхід до особистого акаунту.
+* Реєстрація користувача.
+* Відображення статусу зон.
+Користувач:
+* Доступ до зон.
+* Перегляд доступних зон.
+Адмін системи:
+* Створення будівлі (включає створення адміна будівлі).
+* Створення зон будівлі (включає створення замків).
+
+
+  
+
+Рисунок 2.1 - UML діаграма прецедентів
+
+
+2.2 Розробка ER діаграми даних
+
+
+Для розробки бази даних створено такі таблиці:
+* Users (Користувачі) — містить інформацію про користувачів, включаючи ідентифікатор користувача, ім'я, електронну пошту, телефон та роль.
+* Tokens (Токени) — зберігає токени доступу користувачів для аутентифікації та авторизації.
+* AccessLogs (Логи доступу) — журнал доступу користувачів до зон, включаючи ідентифікатор логів, ідентифікатор зони та ідентифікатор користувача.
+* Zone (Зони) — містить інформацію про зони, включаючи ідентифікатор зони та ідентифікатор будівлі.
+* Zone_User (Зони-Користувачі) — таблиця для зв'язку користувачів із зонами, включаючи ідентифікатор запису, ідентифікатор зони та ідентифікатор користувача.
+* Door (Двері) — таблиця з інформацією про двері, включаючи ідентифікатор дверей та ідентифікатор зони.
+* Address (Адреса) — містить інформацію про будівлі, включаючи ідентифікатор будівлі, адресу, адміністратора будівлі та коментарі.
+Тепер розроблено ER-діаграму на основі цих таблиць (див. рис. 2.2).
+
+
+  
+
+Рисунок 2.2 – ER діаграма даних
+
+
+
+
+3 Розробка бази даних
+
+
+3.1 Розроблення бази даних програмної системи
+Код наведено у додатку А
+Розробка бази даних для програмної системи здійснюється з урахуванням вимог щодо зберігання та обробки даних про користувачів, доступ до зон, будівлі, двері та інші ключові аспекти системи контролю доступу. Для цієї мети вибрано рішення на основі MySQL, що є реляційною базою даних, яка забезпечує високу продуктивність, надійність та можливість підтримки складних взаємозв'язків між сутностями.
+Структура бази даних складається з наступних основних таблиць:
+1. Users (Користувачі)
+   * Містить інформацію про користувачів системи.
+   * Основні поля: user_id, user_name, email, phone, role.
+   * Використовується для ідентифікації та керування доступом користувачів до різних зон і дверей.
+2. Tokens (Токени)
+   * Зберігає дані для аутентифікації користувачів.
+   * Основні поля: token_id, refreshToken, userId.
+   * Дозволяє користувачам підтримувати активну сесію у системі.
+3. AccessLogs (Логи доступу)
+   * Фіксує записи про доступ користувачів до певних зон.
+   * Основні поля: access_logs_id, zone_id, user_id.
+   * Дозволяє відстежувати активність користувачів у системі.
+4. Zone (Зони)
+   * Містить інформацію про різні зони у будівлі.
+   * Основні поля: zone_id, building_id.
+   * Використовується для ідентифікації конкретних зон та їх зв'язку з будівлями.
+5. Zone_User (Зони-Користувачі)
+   * Зв'язує користувачів із конкретними зонами, до яких вони мають доступ.
+   * Основні поля: zone_user_id, zone_id, user_id.
+   * Застосовується для налаштування прав доступу користувачів до зон.
+6. Door (Двері)
+   * Містить дані про двері, які пов'язані з конкретними зонами.
+   * Основні поля: door_id, zone_id.
+   * Використовується для контролю доступу до дверей у межах зони.
+7. Address (Адреса)
+   * Містить інформацію про будівлі, їх адреси та адміністраторів.
+   * Основні поля: building_id, address, admin_id, comment.
+   * Використовується для зберігання адресних даних будівель та коментарів адміністратора.
+Зв’язки між таблицями:
+* Users пов'язані з Tokens через userId, що дозволяє аутентифікувати користувачів.
+* AccessLogs пов'язана з Users та Zone, що дозволяє відстежувати активність користувачів у конкретних зонах.
+* Zone пов'язана з Address, що дозволяє визначати розташування зон у будівлях.
+* Zone_User забезпечує зв'язок між Users та Zone, що дозволяє керувати правами доступу користувачів.
+* Door пов'язана з Zone, що дозволяє контролювати доступ до дверей у певних зонах.
+Використання ORM:
+У проєкті використовується Sequelize ORM у поєднанні з NestJS. Моделі таблиць оголошені у вигляді класів TypeScript, що забезпечує чітку типізацію даних. Реалізована валідація на рівні моделей, підтримуються складні запити та взаємодія зі зв'язками між таблицями. Міграції використовуються для керування версіями бази даних, а транзакції — для забезпечення цілісності даних. Завдяки цьому система ефективно обробляє запити та забезпечує стабільну роботу з базою даних.
+Таке поєднання NestJS та Sequelize ORM забезпечує структуровану та зручну взаємодію з базою даних, а також підтримує кращі практики розробки сучасних додатків. 
+
+
+4 Розробка АРІ
+4 Розробка АРІ для взаємодії серверної частини з клієнтами
+У серверній частині додатка впроваджено маршрути та контролери, що відповідають за реєстрацію, автентифікацію, активацію облікових записів і керування користувацькими сесіями. Код контролерів наведено у додатку Б
+4.1 Маршрути:
+1. UserController
+* POST /registration – Регистрация нового пользователя.
+* POST /login – Авторизация пользователя.
+* POST /logout – Выход пользователя из системы.
+* GET /activate/:link – Активация аккаунта пользователя по ссылке.
+* GET /refresh – Обновление токенов сессии.
+* GET /users – Получение списка всех пользователей (только для авторизованных).
+
+
+2. DoorController
+* POST /doors – Создание новой двери.
+* PUT /doors/:id – Редактирование двери по ID.
+* GET /doors/:id – Получение информации о двери по ID.
+* GET /users/:id/doors – Получение дверей, привязанных к пользователю.
+* DELETE /doors/:id – Удаление двери по ID.
+
+
+3. BuildingController
+* POST /buildings – Создание нового здания.
+* GET /buildings – Получение списка всех зданий.
+* GET /buildings/:id – Получение здания по ID.
+* PUT /buildings/:id – Обновление здания по ID.
+* DELETE /buildings/:id – Удаление здания по ID.
+
+
+
+
+Висновок
+У процесі виконання лабораторної роботи було розроблено UML-діаграму прецедентів для серверної частини та ER-діаграму даних. На основі цих діаграм було спроєктовано та створено базу даних для програмної системи. Після цього було побудовано діаграму структури бази даних, що відображає її архітектуру. Далі були реалізовані функції для роботи з базою даних, а також створено API для забезпечення взаємодії між серверною частиною та клієнтами. Завершальним етапом стала програмна реалізація розробленого API. 
+Посилання на відеозапис: https://www.youtube.com/watch?v=EdZMsAYNFk4
+
+
+
+
+Додаток А
+
+
+1. @Table({ tableName: 'user', createdAt: false, updatedAt: false })
+2. export class User extends Model<User, UserCreationAttrs> {
+3. 4.     @Column({ type: DataType.INTEGER, unique: true, autoIncrement: true, primaryKey: true })
+5.     id: number;
+6. 7.     @Column({ type: DataType.STRING, allowNull: false })
+8.     username: string;
+9. 10.     @Column({ type: DataType.STRING, allowNull: true })
+11.     phone: string;
+12. 13.     @Column({ type: DataType.STRING, allowNull: true })
+14.     email: string;
+15. 16.     @Column({ type: DataType.STRING, allowNull: true })
+17.     password: string;
+18. 19.     @Column({ type: DataType.STRING, allowNull: false })
+20.     role: string;
+21. 22. 23.     @Column({ type: DataType.TEXT, allowNull: true })
+24.     adminComment: string;
+25. 26.     @HasMany(() => Token)
+27.     tokens: Token[];
+28. 29.     @HasMany(() => Building)
+30.     buildings: Building[];
+31. 32.     @HasMany(() => DoorUser)
+33.     doorUsers: DoorUser[];
+34. 35. }
+36. @Table({tableName:'token',createdAt:false, updatedAt:false})
+37. export class Token extends Model<Token,TokenCreationAttrs>{
+38.     @Column({type:DataType.INTEGER, unique:true, autoIncrement:true, primaryKey:true})
+39.     id:number;
+40. 41.     @Column({ type: DataType.STRING(2048) }) // Увеличил размер столбца refreshToken до 2048 символов
+42.     refreshToken: string;
+43. 44.     @Column({type: DataType.DATE, defaultValue: DataType.NOW, })
+45.     creationDate: Date;
+46. 47.     @Column({type:DataType.STRING})
+48.     deviceId:string;
+49.     
+50.     @ForeignKey(() => User)
+51.     @Column({ type: DataType.INTEGER })
+52.     userId: number;
+53.     @BelongsTo(() => User)
+54.     user: User; 
+55. 56. }
+57. @Table({ tableName: 'doors', createdAt: false, updatedAt: false })
+58. export class Door extends Model<Door, DoorCreationAttrs> {
+59.     @Column({ type: DataType.INTEGER, unique: true, autoIncrement: true, primaryKey: true })
+60.     id: number;
+61.     
+62.     @ForeignKey(() => Building)
+63.     @Column({ type: DataType.INTEGER })
+64.     buildingId: number;
+65.     @BelongsTo(() => Building)
+66.     building: Building;
+67. 68. }
+69. @Table({ tableName: 'buildings', createdAt: false, updatedAt: false })
+70. export class Building extends Model<Building, BuildingCreationAttrs> {
+71. 72.     @Column({ type: DataType.INTEGER, unique: true, autoIncrement: true, primaryKey: true })
+73.     id: number;
+74. 75.     @Column({ type: DataType.STRING, allowNull: true })
+76.     address: string;
+77. 78.     @Column({ type: DataType.TEXT, allowNull: true })
+79.     comment: string;
+80. 81.     @ForeignKey(() => User)
+82.     @Column({ type: DataType.INTEGER })
+83.     adminId: number;
+84.     @BelongsTo(() => User)
+85.     admin: User;
+86. 87. }
+
+
+
+
+Додаток Б
+
+
+1. @Controller('building')
+2. export class BuildingController {
+3. 4.     constructor(private buildingService: BuildingService) { }
+5. 6.     @Roles(['system-admin'])
+7.     @UseGuards(RoleGuard)
+8.     @Post('')
+9.     @ApiOperation({ summary: 'Create new building' })
+10.     @ApiBody({ type: CreateBuildingDto })
+11.     async createBuilding(@Body() dto: CreateBuildingDto) {
+12.         return await this.buildingService.createBuilding(dto);
+13.     }
+14. 15.  
+16.     @Roles(['system-admin'])
+17.     @UseGuards(RoleGuard)
+18.     @Get('')
+19.     @ApiOperation({ summary: 'Get all buildings' })
+20.     async getAllBuildings() {
+21.         return await this.buildingService.getAllBuildings();
+22.     }
+23. 24. 25.     @Roles(['system-admin'])
+26.     @UseGuards(RoleGuard)
+27.     @Get(':id')
+28.     @ApiOperation({ summary: 'Get building by ID' })
+29.     @ApiParam({ name: 'id', type: 'string' })
+30.     async getBuildingById(@Param('id') id: string) {
+31.         return await this.buildingService.getBuildingById(id);
+32.     }
+33. 34. 35.     @Roles(['system-admin'])
+36.     @UseGuards(RoleGuard)
+37.     @Put(':id')
+38.     @ApiOperation({ summary: 'Update building by ID' })
+39.     @ApiParam({ name: 'id', type: 'string' })
+40.     @ApiBody({ type: UpdateBuildingDto })
+41.     async updateBuilding(@Param('id') id: string, @Body() dto: UpdateBuildingDto) {
+42.         return await this.buildingService.updateBuilding(id, dto);
+43.     }
+44. 45. 46.     @Roles(['system-admin'])
+47.     @UseGuards(RoleGuard)
+48.     @Delete(':id')
+49.     @ApiOperation({ summary: 'Delete building by ID' })
+50.     @ApiParam({ name: 'id', type: 'string' })
+51.     async deleteBuilding(@Param('id') id: string) {
+52.         return await this.buildingService.deleteBuilding(id);
+53.     }
+54.     
+55. }
+56. @Controller('door')
+57. export class DoorController {
+58.     constructor(private doorService: DoorService) { }
+59. 60.     @Roles(['building-admin'])
+61.     @UseGuards(RoleGuard)
+62.     @Post('')
+63.     @ApiOperation({ summary: 'Create new door' })
+64.     @ApiBody({ type: CreateDoorDto })
+65.     async createDoor(@Body() dto: CreateDoorDto) {
+66.         return await this.doorService.createDoor(dto);
+67.     }
+68. 69. 70.     @Roles(['building-admin'])
+71.     @UseGuards(RoleGuard)
+72.     @Put('')
+73.     @ApiOperation({ summary: 'Edit door' })
+74.     @ApiBody({ type: EditDoorDto })
+75.     async editDoor(@Body() dto: EditDoorDto) {
+76.         return await this.doorService.editDoor(dto);
+77.     }
+78. 79.     @Roles(['building-admin'])
+80.     @UseGuards(RoleGuard)
+81.     @Get('/:id')
+82.     @ApiOperation({ summary: 'Create new building' })
+83.     @ApiParam({ name: 'id', type: 'string' })
+84.     async getDoor(@Param('id') id: string) {
+85.         return await this.doorService.getDoor(Number(id));
+86.     }
+87. 88.     
+89.     @Roles(['building-admin'])
+90.     @UseGuards(RoleGuard)
+91.     @Get('/:id/user')
+92.     @ApiOperation({ summary: 'Create new building' })
+93.     @ApiParam({ name: 'id', type: 'string' })
+94.     async getUserDoors(@Param('id') id: string) {
+95.         return await this.doorService.getUserDoors(Number(id));
+96.     }
+97. 98. 99.     @UseGuards(RoleGuard)
+100.     @Delete('/:id')
+101.     @ApiOperation({ summary: 'Create new building' })
+102.     @ApiParam({ name: 'id', type: 'string' })
+103.     async deleteDoor(@Param('id') id: string) {
+104.         return await this.doorService.deleteDoor(Number(id));
+105.     }
+106. 107. }
+108. 109. @Controller('user')
+110. export class UserController {
+111.     constructor(private userService: UserService) { }
+112. 113.     @Roles(['admin', 'trainer'])
+114.     @UseGuards(RoleGuard)
+115.     @Get(':id')
+116.     @ApiOperation({ summary: 'Get one user by ID' })
+117.     @ApiParam({ name: 'id' })
+118.     async getUser(@Param() { id }) {
+119.         return await this.userService.getUser(id);
+120.     }
+121. 122.     @Roles(['admin'])
+123.     @UseGuards(RoleGuard)
+124.     @Post('/')
+125.     @ApiOperation({ summary: 'Create a new user' })
+126.     @ApiBody({ type: RegisterUserDto })
+127.     async createUser(@Body() dto: RegisterUserDto) {
+128.         return await this.userService.createTrainer(dto);
+129.     }
+130. 131.     @Roles(['admin'])
+132.     @UseGuards(RoleGuard)
+133.     @Get('/')
+134.     @ApiOperation({ summary: 'Get all users' })
+135.     async getAllUsers() {
+136.         return await this.userService.getAllUsers();
+137.     }
+138. 139.     @Roles(['admin', 'trainer'])
+140.     @UseGuards(RoleGuard)
+141.     @Get('/')
+142.     @ApiOperation({ summary: 'Search users by query and role' })
+143.     @ApiQuery({ name: 'search', required: false })
+144.     @ApiQuery({ name: 'role', required: false })
+145.     async searchUsers(@Query('searchQuery') searchQuery: string, @Query('role') role: string) {
+146.         return await this.userService.searchPlayers(searchQuery, role);
+147.     }
+148. 149.     @Roles(['admin', 'trainer'])
+150.     @UseGuards(RoleGuard)
+151.     @Put(':id')
+152.     @ApiOperation({ summary: 'Update user by ID' })
+153.     @ApiBody({ type: EditUserDto })
+154.     async editUser(@Body() dto: EditUserDto, @Param() { id }) {
+155.         return await this.userService.editUser(dto, id)
+156.     }
+157. 158.     @Roles(['admin'])
+159.     @UseGuards(RoleGuard)
+160.     @Delete('/:id')
+161.     @ApiOperation({ summary: 'Delete user' })
+162.     @ApiParam({ name: 'id' })
+163.     async deletePlayer(@Param() { id }) {
+164.         return await this.userService.deleteUser(id)
+165.     }
+166. 167.     @Post('login')
+168.     @ApiOperation({ summary: 'User logining' })
+169.     @ApiBody({ type: LoginDto })
+170.     async login(@Body() dto: LoginDto, @Res() res: Response) {
+171.         const userData = await this.userService.login(dto);
+172.         res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 68 * 1000, httpOnly: true });
+173.         res.cookie('deviceId', userData.deviceId, { maxAge: 30 * 24 * 60 * 68 * 1000, httpOnly: true });
+174.         return res.status(200).json(userData);
+175.     }
+176. 177. }
+178. 179. @Controller('token')
+180. export class TokenController {
+181.     constructor(private tokenService: TokenService) { }
+182. 183.     @Get('refresh')
+184.     async refresh(@Req() req: Request, @Res() res: Response) {
+185.         try {
+186.             const { refreshToken, deviceId } = req.cookies;
+187.             console.log("refreshToken, deviceIdrefreshToken, deviceIdrefreshToken, deviceIdrefreshToken, deviceIdrefreshToken, deviceId")
+188.             console.log(refreshToken, deviceId)
+189.             const userData = await this.tokenService.refresh(refreshToken, deviceId);
+190.             res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 68 * 1000, httpOnly: true });
+191.             res.cookie('deviceId', userData.deviceId, { maxAge: 30 * 24 * 60 * 68 * 1000, httpOnly: true });
+192.             return res.json(userData);
+193.         } catch (error) {
+194.             console.log(error)
+195.             return res.status(500).send(error);
+196.         }
+197.     }
+198. 199. }
