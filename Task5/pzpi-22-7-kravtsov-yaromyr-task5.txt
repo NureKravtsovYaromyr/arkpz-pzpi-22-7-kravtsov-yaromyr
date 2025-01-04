@@ -1,0 +1,186 @@
+﻿Міністерство освіти і науки України 
+Харківський національний університет радіоелектроніки 
+Кафедра програмної інженерії 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Звіт з лабораторної роботи № 5
+ з дисципліни «Аналіз та рефакторинг коду»
+
+
+
+
+
+
+
+
+
+
+Перевірив                                                            Виконав 
+ст. викладач ПІ                                                          ст. групи ПЗПІ-22-7 
+Сокорчук Ігор Петрович                                     Кравцов Я.П.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Харків 2024
+
+
+1 Вступ 
+
+
+Метою лабораторної роботи є розгортання програмної системи, що забезпечує інтеграцію серверної частини з IoT-клієнтом для контролю доступу.
+
+
+
+
+2 ХІД РОБОТИ
+
+
+У проєкті вказані всі актуальні дані, додаткове налаштування не потрібне. Завдяки використанню MySQL як системи управління базами даних, немає необхідності створювати базу вручну, оскільки всі структури та початкові дані створюються автоматично при першому запуску програми.
+Для підключення до бази даних використовується ORM Sequelize, що забезпечує зручний та структурований підхід до роботи з даними, включаючи виконання запитів, міграцій і валідацію.
+У ролі інтернет-речей використано мікропроцесор ESP32, який за допомогою сенсорів та інших підключених модулів передає необхідні дані на сервер за допомогою API-запитів, забезпечуючи двосторонню інтеграцію між пристроєм та серверною частиною.
+Посилання на відеозапис
+https://youtu.be/WPvhO43CjOg
+
+
+ВИСНОВКИ
+
+
+Під час виконання лабораторної роботи була розгорнута реалізована програмна система. 
+
+
+
+
+ДОДАТОК А 
+
+
+1. 2. const readline = require('readline');
+3. const axios = require('axios'); 
+4. const SERVER_URL = 'http://localhost:5000'; 
+5. 6. let cards = [];
+7. 8. const fetchCards = async () => {
+9.     try {
+10.         console.log('🔄 Fetching available cards from the server...');
+11.         const response = await axios.get(`${SERVER_URL}/user`);
+12.         cards = response.data;
+13.         console.log('✅ Cards loaded successfully!');
+14.         console.table(cards);
+15.     } catch (error) {
+16.         console.error('❌ Error fetching cards:', error.message);
+17.     }
+18. }
+19. 20. let doors = [];
+21. 22. const rl = readline.createInterface({
+23.     input: process.stdin,
+24.     output: process.stdout
+25. });
+26. 27. function showLoading(message = 'Processing') {
+28.     const loadingChars = ['|', '/', '-', '\\'];
+29.     let i = 0;
+30.     return setInterval(() => {
+31.         process.stdout.write(`\r${message} ${loadingChars[i++ % loadingChars.length]}`);
+32.     }, 300);
+33. }
+34. 35. async function fetchDoors() {
+36.     try {
+37.         console.log('🔄 Fetching available doors from the server...');
+38.         const response = await axios.get(`${SERVER_URL}/door`);
+39.         doors = response.data;
+40.         console.log('✅ Doors loaded successfully!');
+41. 42.         console.table(doors);
+43.     } catch (error) {
+44.         console.error('❌ Error fetching doors:', error.message);
+45.     }
+46. }
+47. 48. async function checkAccess(userId, doorId) {
+49.     let loader = showLoading('🔄 Verifying access');
+50.     try {
+51.         console.log(userId, doorId)
+52.         const response = await axios.post(`${SERVER_URL}/door/verify-user`, {
+53.             userId, doorId
+54.         });
+55.         
+56.         clearInterval(loader);
+57.         console.log('\n✅ Access Granted!');
+58.         console.log(`Card: ${cardId} → Door: ${doorId}`);
+59.     } catch (error) {
+60.         clearInterval(loader);
+61.         if (error.response) {
+62.             console.error('\n❌ Access Denied:', error.response.data.message);
+63.         }
+64.     }
+65. }
+66. 67. async function main() {
+68.     console.log('🚀 Welcome to the Access Control Simulator');
+69.     console.log('--------------------------------------------');
+70.     await fetchCards()
+71.     await fetchDoors();
+72.     
+73.     function askForInput() {
+74.         rl.question('\n🔑 Enter Card ID (or type "exit" to quit): ', (cardId) => {
+75.             if (cardId.toLowerCase() === 'exit') {
+76.                 console.log('👋 Exiting...');
+77.                 rl.close();
+78.                 return;
+79.             }
+80. 81.             const card = cards.find(c => c.id === Number(cardId));
+82.             if (!card) {
+83.                 console.log('❌ Invalid Card ID. Please try again.');
+84.                 askForInput();
+85.                 return;
+86.             }
+87. 88.             console.log(`🪪 Card selected: ${card.username} (${card.id})`);
+89. 90.             rl.question('🚪 Enter Door ID: ', async (doorId) => {
+91.                 const door = doors.find(d => d.id === Number(doorId));
+92. 93.                 if (!door) {
+94.                     console.log('❌ Invalid Door ID. Please try again.');
+95.                     askForInput();
+96.                     return;
+97.                 }
+98. 99.                 console.log(`🚪 Door selected: ${door.buildingId} (${door.id})`);
+100. 101.                 await checkAccess(card.id, doorId);
+102.                 askForInput();  
+103.             });
+104.         });
+105.     }
+106. 107.     askForInput();
+108. }
+109. 110. main();
